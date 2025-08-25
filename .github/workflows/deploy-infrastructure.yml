@@ -40,13 +40,6 @@ jobs:
         terraform init
         echo "✅ Terraform initialized successfully"
         
-    - name: Terraform Plan
-      run: |
-        echo "=== Planning Terraform Changes ==="
-        cd infrastructure/terraform
-        terraform plan -out=tfplan
-        echo "✅ Terraform plan completed"
-        
     - name: Terraform Apply
       run: |
         echo "=== Applying Terraform Changes ==="
