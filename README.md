@@ -73,6 +73,44 @@ terraform apply
 # Username: admin, Password: admin123
 ```
 
+## 📚 **Terraform Fundamentals (What You Need to Know):**
+
+### **1. Terraform State File (`terraform.tfstate`)**
+- **Purpose**: Tracks all resources created by Terraform
+- **Location**: `infrastructure/terraform/terraform.tfstate`
+- **Why Important**: Without it, Terraform can't manage existing resources
+- **Management**: Should be committed to Git for testing environments
+
+### **2. Terraform Lock File (`.terraform.lock.hcl`)**
+- **Purpose**: Locks provider versions for consistent deployments
+- **Location**: `infrastructure/terraform/.terraform.lock.hcl`
+- **Why Important**: Prevents provider updates from breaking deployments
+- **Management**: Should be committed to Git for reproducibility
+
+### **3. Complete Terraform Workflow**
+```bash
+# 1. Initialize (downloads providers, creates lock file)
+terraform init
+
+# 2. Plan (shows what will change)
+terraform plan
+
+# 3. Apply (creates resources, generates state file)
+terraform apply
+
+# 4. State management (tracking created resources)
+terraform state list
+terraform show
+```
+
+### **4. Files to Commit After Deployment**
+```bash
+# Both files should be committed for testing environments
+git add terraform.tfstate .terraform.lock.hcl
+git commit -m "Update Terraform state and lock file after deployment"
+git push origin develop
+```
+
 ### **Option 2: Monitor Cluster with GitHub Actions**
 1. Set up self-hosted runner (see `SELF_HOSTED_RUNNER_SETUP.md`)
 2. Push code to trigger workflow
