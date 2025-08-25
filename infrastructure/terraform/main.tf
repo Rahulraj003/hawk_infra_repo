@@ -172,11 +172,11 @@ resource "helm_release" "argocd" {
 
   # ArgoCD admin credentials
   # Note: Username is hardcoded as 'admin' in ArgoCD - cannot be changed via Helm
-  # Admin password must be set for authentication to work
+  # Admin password must be bcrypt hashed for ArgoCD to use it
   
   set {
     name  = "configs.secret.argocdServerAdminPassword"
-    value = var.admin_password
+    value = "$2a$10$LT0KfUTu2fMeV3aVDcVtku/6rQZHZARQst9o3m98OTiYFbpW8MRlm"
   }
 
   set {
