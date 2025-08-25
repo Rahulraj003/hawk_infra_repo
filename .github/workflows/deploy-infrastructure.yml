@@ -40,13 +40,6 @@ jobs:
         terraform init
         echo "✅ Terraform initialized successfully"
         
-    - name: Terraform Plan
-      run: |
-        echo "=== Planning Terraform Changes ==="
-        cd infrastructure/terraform
-        terraform plan -out=tfplan
-        echo "✅ Terraform plan completed"
-        
     - name: Terraform Apply
       run: |
         echo "=== Applying Terraform Changes ==="
@@ -63,9 +56,9 @@ jobs:
         
         # Wait for pods to be ready
         echo "Waiting for ArgoCD pods to be ready..."
-        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=300s
-        kubectl wait --for=condition=condition=ready pod -l app.kubernetes.io/name=argocd-application-controller -n argocd --timeout=300s
-        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-repo-server -n argocd --timeout=300s
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=120s
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-application-controller -n argocd --timeout=120s
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-repo-server -n argocd --timeout=120s
         
         echo "✅ ArgoCD deployment verified"
         

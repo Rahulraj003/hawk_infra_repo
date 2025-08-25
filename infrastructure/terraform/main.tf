@@ -55,6 +55,11 @@ resource "helm_release" "argocd" {
     value = var.admin_password
   }
 
+  set {
+    name  = "configs.secret.argocdServerSecretKey"
+    value = var.argocd_server_secret_key
+  }
+
   # Ultra-lightweight server resources
   set {
     name  = "server.resources.limits.cpu"
