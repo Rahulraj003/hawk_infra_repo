@@ -4,9 +4,6 @@ on:
   push:
     branches: [ develop ]
     paths: [ 'infrastructure/**' ]  # Only trigger when infrastructure changes
-  pull_request:
-    branches: [ develop ]
-    paths: [ 'infrastructure/**' ]
   workflow_dispatch:  # Manual trigger option
 
 jobs:
@@ -67,7 +64,7 @@ jobs:
         # Wait for pods to be ready
         echo "Waiting for ArgoCD pods to be ready..."
         kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=300s
-        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-application-controller -n argocd --timeout=300s
+        kubectl wait --for=condition=condition=ready pod -l app.kubernetes.io/name=argocd-application-controller -n argocd --timeout=300s
         kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-repo-server -n argocd --timeout=300s
         
         echo "✅ ArgoCD deployment verified"

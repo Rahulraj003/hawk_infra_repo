@@ -200,4 +200,5 @@ output "argocd_info" {
     access_url = "http://localhost:${var.external_port}"
     resource_usage = "Ultra-lightweight configuration"
   }
+  sensitive = true  # Mark as sensitive since it contains password
 }

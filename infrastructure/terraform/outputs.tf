@@ -37,6 +37,7 @@ output "argocd_cluster_info" {
     helm_release   = helm_release.argocd.name
     chart_version  = helm_release.argocd.version
   }
+  sensitive = true  # Mark as sensitive since it contains password
 }
 
 output "kubectl_commands" {
