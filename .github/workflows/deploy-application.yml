@@ -9,7 +9,7 @@ on:
 
 env:
   REGISTRY: docker.io
-  IMAGE_NAME: ${{ github.repository }}-java-hello-world
+  IMAGE_NAME: java-hello-world
 
 jobs:
   build-and-test:
@@ -38,10 +38,7 @@ jobs:
       run: |
         cd applications/java-hello-world
         echo "Building application..."
-        
-        # Build without tests for now
         ./gradlew build -x test
-        
         echo ""
         echo "✅ Build completed successfully!"
         echo "✅ JAR file created in build/libs/"
@@ -50,10 +47,7 @@ jobs:
       run: |
         cd applications/java-hello-world
         echo "Running simple tests..."
-        
-        # Use Gradle to run the test (handles classpath automatically)
         ./gradlew run --args="test"
-        
         echo ""
         echo "✅ Simple tests completed!"
         
@@ -67,26 +61,22 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
         
-    - name: Extract metadata
-      id: meta
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ env.REGISTRY }}/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}
-        tags: |
-          type=ref,event=branch
-          type=ref,event=pr
-          type=sha,prefix={{branch}}-
-          type=raw,value=latest,enable={{is_default_branch}}
-          
     - name: Build and push Docker image
-      uses: docker/build-push-action@v5
-      with:
-        context: ./applications/java-hello-world
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+      run: |
+        cd applications/java-hello-world
+        
+        # Build the image
+        docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }} .
+        
+        # Push the image
+        docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        
+        # Also tag as latest
+        docker tag ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }} ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+        docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+        
+        echo "✅ Docker image built and pushed successfully!"
+        echo "Image: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
         
     - name: Prepare Helm chart values
       if: github.ref == 'refs/heads/develop'
@@ -94,8 +84,6 @@ jobs:
         echo "Preparing Helm chart values for deployment..."
         echo "New image tag: ${{ github.sha }}"
         echo "New image repository: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}"
-        
-        # Store values for later use in deployment
         echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
         echo "IMAGE_REPOSITORY=${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}" >> $GITHUB_ENV
         
