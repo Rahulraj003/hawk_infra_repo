@@ -20,7 +20,7 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: hawk-apps
-  # Professional sync policy with proper automation
+  ## Professional sync policy with proper automation
   syncPolicy:
     automated:
       prune: true
