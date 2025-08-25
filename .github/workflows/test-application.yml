@@ -51,8 +51,8 @@ jobs:
         cd applications/java-hello-world
         echo "Running simple tests..."
         
-        # Run our simple test
-        java -cp "build/classes/java/main:build/classes/java/test" com.example.SimpleTest
+        # Use Gradle to run the test (handles classpath automatically)
+        ./gradlew run --args="test"
         
         echo ""
         echo "✅ Simple tests completed!"
