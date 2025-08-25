@@ -172,12 +172,19 @@ resource "helm_release" "argocd" {
 
   # ArgoCD admin credentials
   set {
+    name  = "configs.cm.accounts.admin.username"
+    value = var.admin_username
+  }
+
+  set {
+    name  = "configs.cm.accounts.admin.password"
+    value = var.admin_password
+  }
+
+  set {
     name  = "configs.secret.argocdServerSecretKey"
     value = var.argocd_server_secret_key
   }
-
-  # Note: ArgoCD username is hardcoded as 'admin' - cannot be changed via Helm
-  # Password is managed by ArgoCD internally via initial admin secret
 
   # Minimal replica count for lightweight setup
   set {
