@@ -105,7 +105,8 @@ jobs:
           git add terraform.tfstate
           git commit -m "Update Terraform state after ArgoCD deployment [skip ci]"
           
-          # Push to repository
+          # Push to repository using personal access token
+          git remote set-url origin https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/${{ github.repository }}
           git push origin develop
           echo "✅ State file committed and pushed successfully"
         else
