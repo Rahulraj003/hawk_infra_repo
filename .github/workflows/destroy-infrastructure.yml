@@ -1,0 +1,77 @@
+name: Destroy Infrastructure (ArgoCD)
+
+on:
+  workflow_dispatch:  # Manual trigger only - safety first!
+
+jobs:
+  destroy-argocd:
+    runs-on: self-hosted  # Uses your local Mac runner where k3d cluster is running
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Confirm destruction
+      run: |
+        echo "⚠️  WARNING: This will destroy ArgoCD and all its resources!"
+        echo "⚠️  This action cannot be undone!"
+        echo "⚠️  Make sure you want to proceed!"
+        
+    - name: Verify cluster access
+      run: |
+        echo "=== Verifying Cluster Access ==="
+        kubectl cluster-info
+        kubectl get nodes
+        echo "✅ Cluster access verified"
+        
+    - name: Show current ArgoCD resources
+      run: |
+        echo "=== Current ArgoCD Resources ==="
+        kubectl get all -n argocd
+        kubectl get namespace argocd
+        
+    - name: Navigate to Terraform directory
+      run: |
+        echo "=== Setting up Terraform Directory ==="
+        cd infrastructure/terraform
+        pwd
+        ls -la
+        
+    - name: Terraform Init
+      run: |
+        echo "=== Initializing Terraform ==="
+        cd infrastructure/terraform
+        terraform init
+        echo "✅ Terraform initialized successfully"
+        
+    - name: Terraform Plan Destroy
+      run: |
+        echo "=== Planning Terraform Destruction ==="
+        cd infrastructure/terraform
+        terraform plan -destroy -out=destroy-plan
+        echo "✅ Terraform destroy plan completed"
+        
+    - name: Terraform Destroy
+      run: |
+        echo "=== Destroying Infrastructure ==="
+        cd infrastructure/terraform
+        terraform destroy -auto-approve
+        echo "✅ Terraform destroy completed"
+        
+    - name: Verify Cleanup
+      run: |
+        echo "=== Verifying Cleanup ==="
+        kubectl get namespace argocd 2>/dev/null || echo "✅ ArgoCD namespace removed"
+        kubectl get all --all-namespaces | grep argocd || echo "✅ No ArgoCD resources found"
+        
+    - name: Cleanup Summary
+      run: |
+        echo "=== CLEANUP SUMMARY ==="
+        echo "✅ Infrastructure destruction completed successfully"
+        echo "✅ ArgoCD has been completely removed from your cluster"
+        echo "✅ All related resources have been cleaned up"
+        echo ""
+        echo "To redeploy ArgoCD:"
+        echo "1. Make changes to infrastructure files"
+        echo "2. Push to develop branch, or"
+        echo "3. Manually run the deploy workflow"

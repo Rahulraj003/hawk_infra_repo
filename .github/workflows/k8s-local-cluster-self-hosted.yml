@@ -3,9 +3,9 @@ name: Local K8s Cluster Info (Self-Hosted Runner)
 on:
   workflow_dispatch:  # Manual trigger
   push:
-    branches: [ main, master ]
+    branches: [ develop ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ develop ]
 
 jobs:
   cluster-info:

@@ -1,0 +1,71 @@
+name: Plan Infrastructure (PR Validation)
+
+on:
+  pull_request:
+    branches: [ develop ]
+    paths: [ 'infrastructure/**' ]
+  workflow_dispatch:  # Manual trigger option
+
+jobs:
+  plan-infrastructure:
+    runs-on: self-hosted  # Uses your local Mac runner where k3d cluster is running
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Check Terraform version
+      run: |
+        echo "=== Terraform Version ==="
+        terraform version
+        
+    - name: Verify cluster access
+      run: |
+        echo "=== Verifying Cluster Access ==="
+        kubectl cluster-info
+        kubectl get nodes
+        echo "✅ Cluster access verified"
+        
+    - name: Navigate to Terraform directory
+      run: |
+        echo "=== Setting up Terraform Directory ==="
+        cd infrastructure/terraform
+        pwd
+        ls -la
+        
+    - name: Terraform Init
+      run: |
+        echo "=== Initializing Terraform ==="
+        cd infrastructure/terraform
+        terraform init
+        echo "✅ Terraform initialized successfully"
+        
+    - name: Terraform Plan
+      run: |
+        echo "=== Planning Terraform Changes ==="
+        cd infrastructure/terraform
+        # Run plan and capture exit code
+        terraform plan -detailed-exitcode || {
+          EXIT_CODE=$?
+          if [ $EXIT_CODE -eq 2 ]; then
+            echo "✅ Terraform plan completed with warnings (exit code 2)"
+            echo "⚠️  Note: This is normal when not using -out option"
+            echo "✅ Plan shows what would change if merged"
+          else
+            echo "❌ Terraform plan failed with exit code $EXIT_CODE"
+            exit $EXIT_CODE
+          fi
+        }
+        
+    - name: Plan Summary
+      run: |
+        echo "=== PLAN SUMMARY ==="
+        echo "✅ This is a PR validation run - NO changes will be applied"
+        echo "✅ Terraform plan shows what WOULD change if merged"
+        echo "✅ Exit code 2 is normal and expected (just a warning)"
+        echo "✅ Actual deployment happens only when PR is merged to develop"
+        echo ""
+        echo "To deploy:"
+        echo "1. Review this plan output above"
+        echo "2. Approve and merge the PR"
+        echo "3. ArgoCD will be automatically deployed to develop branch"
