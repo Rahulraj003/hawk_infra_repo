@@ -35,6 +35,13 @@ variable "admin_password" {
   sensitive   = true
 }
 
+variable "argocd_server_secret_key" {
+  description = "Secret key for ArgoCD server (32-byte random key)"
+  type        = string
+  default     = "your-secret-key-here-change-this-in-production"
+  sensitive   = true
+}
+
 variable "server_resources" {
   description = "Ultra-lightweight resource limits for ArgoCD server"
   type = object({
