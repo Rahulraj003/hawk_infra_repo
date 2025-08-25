@@ -1,0 +1,180 @@
+name: Deploy Java Application
+
+on:
+  push:
+    branches: [ develop ]
+    paths:
+      - 'applications/**'
+      - '.github/workflows/deploy-application.yml'
+  pull_request:
+    branches: [ develop ]
+    paths:
+      - 'applications/**'
+      - '.github/workflows/deploy-application.yml'
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: ${{ github.repository }}-java-hello-world
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK 11
+      uses: actions/setup-java@v3
+      with:
+        java-version: '11'
+        distribution: 'temurin'
+        
+    - name: Cache Gradle packages
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.gradle/caches
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+          
+    - name: Build with Gradle
+      run: |
+        cd applications/java-hello-world
+        ./gradlew build
+        
+    - name: Run tests
+      run: |
+        cd applications/java-hello-world
+        echo "Running unit tests..."
+        ./gradlew test
+        
+        echo "Running integration tests..."
+        ./gradlew test --tests "*IntegrationTest*"
+        
+        echo "Running Docker image tests..."
+        ./gradlew test --tests "*DockerImageTest*"
+        
+        echo "Test results:"
+        ./gradlew test --info
+        
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+        
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+          
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./applications/java-hello-world
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        
+    - name: Prepare Helm chart values
+      if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+      run: |
+        echo "Preparing Helm chart values for deployment..."
+        echo "New image tag: ${{ github.sha }}"
+        echo "New image repository: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}"
+        
+        # Store values for later use in deployment
+        echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
+        echo "IMAGE_REPOSITORY=${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}" >> $GITHUB_ENV
+        
+  deploy-to-kubernetes:
+    needs: build-and-test
+    runs-on: self-hosted
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'latest'
+        
+    - name: Set up Helm
+      uses: azure/setup-helm@v3
+      with:
+        version: 'latest'
+        
+    - name: Create ArgoCD Project (if not exists)
+      run: |
+        echo "Creating ArgoCD project for hawk-apps..."
+        kubectl apply -f applications/java-hello-world/argocd-project.yaml || echo "Project already exists"
+        
+    - name: Create ArgoCD Application (if not exists)
+      run: |
+        echo "Creating ArgoCD application for automatic sync..."
+        kubectl apply -f applications/java-hello-world/argocd-application.yaml || echo "Application already exists"
+        
+    - name: Deploy Application with Updated Image
+      run: |
+        echo "Deploying application with new image..."
+        echo "Image Tag: ${{ env.IMAGE_TAG }}"
+        echo "Image Repository: ${{ env.IMAGE_REPOSITORY }}"
+        
+        # Deploy directly using Helm with new image values
+        cd applications/java-hello-world/helm-chart
+        
+        helm upgrade --install java-hello-world . \
+          --namespace hawk-apps \
+          --create-namespace \
+          --set image.tag="${{ env.IMAGE_TAG }}" \
+          --set image.repository="${{ env.IMAGE_REPOSITORY }}" \
+          --set service.type=NodePort \
+          --set service.nodePort=30443
+        
+    - name: Verify ArgoCD Application
+      run: |
+        echo "Checking ArgoCD application status..."
+        kubectl get application java-hello-world -n argocd
+        echo ""
+        echo "ArgoCD application details:"
+        kubectl describe application java-hello-world -n argocd
+        
+    - name: Wait for ArgoCD to Sync
+      run: |
+        echo "Waiting for ArgoCD to automatically sync the application..."
+        kubectl wait --for=condition=healthy --timeout=300s application/java-hello-world -n argocd
+          
+    - name: Verify deployment
+      run: |
+        echo "Waiting for deployment to be ready..."
+        kubectl wait --for=condition=available --timeout=300s deployment/java-hello-world -n hawk-apps
+        
+    - name: Show deployment status
+      run: |
+        echo "=== Deployment Status ==="
+        kubectl get deployment java-hello-world -n hawk-apps
+        echo ""
+        echo "=== Pod Status ==="
+        kubectl get pods -n hawk-apps -l app.kubernetes.io/name=java-hello-world
+        echo ""
+        echo "=== Service Status ==="
+        kubectl get services -n hawk-apps -l app.kubernetes.io/name=java-hello-world
+        echo ""
+        echo "=== Namespace Status ==="
+        kubectl get namespace hawk-apps

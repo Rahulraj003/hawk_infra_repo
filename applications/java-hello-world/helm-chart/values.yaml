@@ -1,0 +1,29 @@
+# Default values for java-hello-world
+replicaCount: 1
+
+image:
+  repository: your-dockerhub-username/java-hello-world
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+nameOverride: ""
+fullnameOverride: ""
+
+service:
+  type: NodePort
+  port: 8080
+  nodePort: 30443  # This will map to port 8444 on your Mac
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
