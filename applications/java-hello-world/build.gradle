@@ -1,0 +1,44 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'com.example'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.0'
+}
+
+application {
+    mainClass = 'com.example.HelloWorld'
+}
+
+test {
+    useJUnitPlatform()
+    
+    // Ensure tests run in separate JVM
+    forkEvery = 1
+    
+    // Show test output
+    testLogging {
+        events "passed", "skipped", "failed"
+        showStandardStreams = true
+    }
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'com.example.HelloWorld'
+    }
+}

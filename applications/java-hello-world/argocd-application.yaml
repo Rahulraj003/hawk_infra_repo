@@ -1,0 +1,49 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: java-hello-world
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: java-hello-world
+    app.kubernetes.io/part-of: hawk-apps
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: hawk-apps
+  source:
+    repoURL: https://github.com/Rahulraj003/hawk_infra_repo.git
+    targetRevision: develop
+    path: applications/java-hello-world/helm-chart
+    helm:
+      valueFiles:
+        - values.yaml
+      # Enable Helm hooks for proper lifecycle management
+      hooks:
+        - kind: Job
+          generateName: pre-sync-
+        - kind: Job
+          generateName: post-sync-
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hawk-apps
+  # Professional sync policy with proper automation
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      # Allow out-of-sync applications to be synced automatically
+      allowEmpty: false
+    # Sync options for production-grade deployments
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+      - RespectIgnoreDifferences=true
+      - ServerSideApply=true
+  # Revision history for rollback capability
+  revisionHistoryLimit: 10
+  # Health checks for application status
+  healthChecks:
+    - group: argoproj.io
+      kind: Application
+      name: java-hello-world

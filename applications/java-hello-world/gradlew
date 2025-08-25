@@ -1,0 +1,11 @@
+#!/bin/sh
+# Gradle wrapper script for CI/CD pipeline
+# This will use the system Gradle in GitHub Actions
+
+# Use system gradle if available
+if command -v gradle >/dev/null 2>&1; then
+    exec gradle "$@"
+else
+    echo "Gradle not found, please install Gradle or use ./gradlew"
+    exit 1
+fi
