@@ -88,6 +88,45 @@ jobs:
         
         echo "✅ ArgoCD connection test completed"
         
+    - name: Verify ArgoCD Credentials
+      run: |
+        echo "=== VERIFYING ARGOCD CREDENTIALS ==="
+        echo ""
+        echo "🔍 Checking username configuration:"
+        USERNAME=$(kubectl -n argocd get secret argocd-secret -o jsonpath="{.data.admin\\.username}" | base64 -d)
+        if [ "$USERNAME" = "admin" ]; then
+          echo "✅ Username: $USERNAME (Correctly configured)"
+        else
+          echo "❌ Username: $USERNAME (NOT correctly configured)"
+          echo "Expected: admin, Got: $USERNAME"
+        fi
+        
+        echo ""
+        echo "🔍 Checking password configuration:"
+        PASSWORD=$(kubectl -n argocd get secret argocd-secret -o jsonpath="{.data.admin\\.password}" | base64 -d)
+        if [ "$PASSWORD" = "admin123" ]; then
+          echo "✅ Password: $PASSWORD (Correctly configured)"
+        else
+          echo "❌ Password: $PASSWORD (NOT correctly configured)"
+          echo "Expected: admin123, Got: $PASSWORD"
+        fi
+        
+        echo ""
+        echo "🔍 Complete secret data:"
+        kubectl -n argocd get secret argocd-secret -o yaml | grep -A 10 "data:"
+        
+        echo ""
+        if [ "$USERNAME" = "admin" ] && [ "$PASSWORD" = "admin123" ]; then
+          echo "🎉 CREDENTIALS VERIFICATION PASSED!"
+          echo "✅ Username: admin"
+          echo "✅ Password: admin123"
+          echo "✅ ArgoCD login should work perfectly"
+        else
+          echo "❌ CREDENTIALS VERIFICATION FAILED!"
+          echo "❌ Check the configuration and redeploy"
+          exit 1
+        fi
+        
     - name: Manual State File Management
       run: |
         echo "=== MANUAL STATE FILE MANAGEMENT ==="
