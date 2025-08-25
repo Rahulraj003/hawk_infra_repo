@@ -53,15 +53,3 @@ spec:
   # Allowed Helm charts
   sourceNamespaces:
     - argocd
-  
-  # Sync windows (optional - for production deployments)
-  syncWindows:
-    - name: allow-all
-      schedule: '0 0 * * *'
-      duration: 24h
-      applications:
-        - '*'
-      namespaces:
-        - '*'
-      manualSync: true
-      timezone: 'UTC'

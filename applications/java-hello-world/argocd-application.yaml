@@ -17,12 +17,6 @@ spec:
     helm:
       valueFiles:
         - values.yaml
-      # Enable Helm hooks for proper lifecycle management
-      hooks:
-        - kind: Job
-          generateName: pre-sync-
-        - kind: Job
-          generateName: post-sync-
   destination:
     server: https://kubernetes.default.svc
     namespace: hawk-apps
@@ -42,8 +36,3 @@ spec:
       - ServerSideApply=true
   # Revision history for rollback capability
   revisionHistoryLimit: 10
-  # Health checks for application status
-  healthChecks:
-    - group: argoproj.io
-      kind: Application
-      name: java-hello-world
