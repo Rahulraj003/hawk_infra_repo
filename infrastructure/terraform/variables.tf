@@ -28,6 +28,12 @@ variable "external_port" {
   default     = 8081
 }
 
+variable "admin_username" {
+  description = "Admin username for ArgoCD"
+  type        = string
+  default     = "admin"
+}
+
 variable "admin_password" {
   description = "Admin password for ArgoCD"
   type        = string
