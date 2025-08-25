@@ -1,101 +1,146 @@
 # Hawk Infrastructure Repository
 
-This repository contains GitHub Actions workflows for managing and monitoring local Kubernetes clusters.
+This repository contains GitHub Actions workflows for managing and monitoring local Kubernetes clusters, plus Terraform configurations for infrastructure deployment.
 
-## Kubernetes Cluster Information Workflow
+## 🚀 **What's Included:**
 
-### Self-Hosted Runner Workflow (`.github/workflows/k8s-local-cluster-self-hosted.yml`)
+### **1. GitHub Actions Workflow**
+- **Self-Hosted Runner Workflow** (`.github/workflows/k8s-local-cluster-self-hosted.yml`)
+- Monitors your local k3d cluster
+- Shows current context, namespaces, pods, and cluster resources
 
-This workflow runs on your **local Mac machine** where your k3d cluster is running, giving it direct access to your local cluster.
+### **2. Infrastructure as Code**
+- **ArgoCD Deployment** using Terraform + Helm
+- Located in `infrastructure/terraform/`
+- Configured for your k3d `gitops-demo` cluster
+- Includes resource management and monitoring
 
-**What it provides:**
-- ✅ Current Kubernetes context
-- ✅ Available namespaces
-- ✅ Pods across all namespaces with status
-- ✅ Cluster resources and status
-- ✅ Node information and capacity
-- ✅ Deployments, services, configmaps, and secrets
-- ✅ Recent cluster events
-- ✅ Complete cluster summary with resource counts
+### **3. Application Code (Future)**
+- **Applications folder** ready for your application code
+- Can be integrated with ArgoCD for GitOps workflows
 
-## How It Works
+## 🏗️ **Infrastructure Components:**
 
-The workflow uses a **self-hosted GitHub Actions runner** that runs directly on your Mac, allowing it to:
-- Access your local k3d cluster
-- Use your local kubectl and k3d installations
-- See real-time cluster information
-- Maintain security (no need to expose cluster to internet)
+### **ArgoCD Setup**
+- **Namespace**: `argocd`
+- **Port Mapping**: `localhost:8081` → `30080` (NodePort)
+- **Admin**: `admin` / `admin123`
+- **Resource Limits**: Optimized for local development
 
-## Prerequisites
-
-- k3d installed on your local Mac
-- A local Kubernetes cluster running via k3d
-- GitHub repository with Actions enabled
-- Self-hosted runner configured on your Mac
-
-## Setup Instructions
-
-### 1. Set Up Self-Hosted Runner
-Follow the detailed setup guide in [`SELF_HOSTED_RUNNER_SETUP.md`](SELF_HOSTED_RUNNER_SETUP.md) to:
-- Install GitHub Actions runner on your Mac
-- Configure it to connect to your repository
-- Ensure it has access to kubectl and k3d
-
-### 2. Verify Local Cluster
+### **k3d Cluster Configuration**
 ```bash
-# Check k3d cluster status
-k3d cluster list
-
-# Verify kubectl access
-kubectl cluster-info
-
-# Test pod listing
-kubectl get pods --all-namespaces
+k3d cluster create gitops-demo \
+  --servers 1 \
+  --agents 1 \
+  --image rancher/k3s:v1.30.2-k3s1 \
+  --k3s-node-label "role=server,env=dev@server:0" \
+  --k3s-node-label "role=agent,env=dev@server:0" \
+  --port "8081:30080@loadbalancer" \
+  --port "8444:30443@loadbalancer"
 ```
 
-### 3. Run the Workflow
-1. Push the workflow files to your repository
-2. Go to Actions tab
-3. Select "Local K8s Cluster Info (Self-Hosted Runner)"
-4. Click "Run workflow"
+## 📁 **Repository Structure:**
 
-## What You'll See
+```
+hawk_infra_repo/
+├── .github/workflows/          # GitHub Actions workflows (common)
+│   └── k8s-local-cluster-self-hosted.yml
+├── infrastructure/              # All infrastructure code
+│   └── terraform/              # Terraform configurations
+│       ├── main.tf             # Main Terraform configuration
+│       ├── variables.tf        # Variable definitions
+│       ├── outputs.tf          # Output values
+│       ├── terraform.tfvars    # Configuration values
+│       └── README_TERRAFORM.md # Terraform deployment guide
+├── applications/                # Application code (future)
+├── README.md                   # This file
+└── SELF_HOSTED_RUNNER_SETUP.md # GitHub Actions runner setup
+```
 
-The workflow will output:
-- **Current Context**: The Kubernetes context being used
-- **Cluster Information**: Version, API server details
-- **Namespaces**: All available namespaces in your cluster
-- **Pods**: All pods across all namespaces with their status
-- **Resources**: Deployments, services, and other Kubernetes resources
-- **Summary**: Total counts of various resource types
+## 🚀 **Quick Start:**
 
-## Benefits of This Approach
+### **Option 1: Deploy ArgoCD with Terraform**
+```bash
+# Navigate to terraform directory
+cd infrastructure/terraform
 
-1. **Direct Access**: Workflows run on your Mac where the cluster is
-2. **Security**: No need to expose your cluster to the internet
-3. **Performance**: Fast execution with no network latency
-4. **Real-time Data**: Always current cluster information
-5. **Full Integration**: Can use all your local tools and configurations
+# Initialize and deploy
+terraform init
+terraform plan
+terraform apply
 
-## Troubleshooting
+# Access ArgoCD at: http://localhost:8081
+# Username: admin, Password: admin123
+```
 
-- Ensure your self-hosted runner is active and connected
-- Verify that kubectl can connect to your local cluster
-- Check the workflow logs for any error messages
-- Ensure the runner has proper permissions to access kubectl
+### **Option 2: Monitor Cluster with GitHub Actions**
+1. Set up self-hosted runner (see `SELF_HOSTED_RUNNER_SETUP.md`)
+2. Push code to trigger workflow
+3. View cluster information in Actions tab
 
-## Customization
+## 🔧 **Prerequisites:**
 
-You can modify the workflow to:
-- Add additional kubectl commands
-- Filter resources by labels or namespaces
-- Export data in different formats
-- Add notifications or webhooks
-- Schedule regular cluster health checks
+- **k3d cluster** running (`gitops-demo`)
+- **Terraform** (version >= 1.0)
+- **kubectl** configured
+- **Helm** installed
+- **GitHub repository** with Actions enabled
 
-## Security Considerations
+## 📚 **Documentation:**
 
-- The self-hosted runner runs on your local machine
-- It has access to your local files and network
-- Only run trusted workflows
-- Consider using runner groups for better access control
+- **`infrastructure/terraform/README_TERRAFORM.md`** - Complete Terraform deployment guide
+- **`SELF_HOSTED_RUNNER_SETUP.md`** - GitHub Actions runner setup
+- **`README.md`** - This overview file
+
+## 🎯 **Use Cases:**
+
+### **Development & Testing:**
+- Local Kubernetes cluster management
+- Infrastructure as Code with Terraform
+- GitOps workflows with ArgoCD
+- Automated cluster monitoring
+- Application deployment and management
+
+### **Learning & Experimentation:**
+- Kubernetes resource management
+- Terraform infrastructure deployment
+- GitHub Actions automation
+- GitOps principles
+- Full-stack development workflow
+
+## 🆘 **Getting Help:**
+
+1. **Terraform Issues**: Check `infrastructure/terraform/README_TERRAFORM.md`
+2. **GitHub Actions**: Check `SELF_HOSTED_RUNNER_SETUP.md`
+3. **Cluster Issues**: Use the monitoring workflow
+4. **General Questions**: Review this README
+
+## 🔄 **Workflow:**
+
+1. **Deploy Infrastructure** → Terraform + ArgoCD
+2. **Monitor Cluster** → GitHub Actions workflow
+3. **Develop Applications** → Applications folder
+4. **Deploy Applications** → ArgoCD GitOps
+5. **Iterate & Improve** → Update configurations
+
+## 🚨 **Security Notes:**
+
+- **Change default passwords** in production
+- **Use secrets management** for sensitive data
+- **Enable RBAC** for production deployments
+- **Consider network policies** for cluster security
+
+## 🔮 **Future Enhancements:**
+
+- **Application templates** in applications folder
+- **Helm charts** for common services
+- **CI/CD pipelines** for applications
+- **Monitoring and logging** stacks
+- **Security scanning** workflows
+
+---
+
+**Ready to get started?** Choose your path:
+- 🏗️ **Deploy ArgoCD**: Follow `infrastructure/terraform/README_TERRAFORM.md`
+- 📊 **Monitor Cluster**: Follow `SELF_HOSTED_RUNNER_SETUP.md`
+- 🔍 **Explore**: Check the workflow files and configurations

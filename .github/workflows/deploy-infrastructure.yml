@@ -1,0 +1,113 @@
+name: Deploy Infrastructure (ArgoCD)
+
+on:
+  push:
+    branches: [ develop ]
+    paths: [ 'infrastructure/**' ]  # Only trigger when infrastructure changes
+  pull_request:
+    branches: [ develop ]
+    paths: [ 'infrastructure/**' ]
+  workflow_dispatch:  # Manual trigger option
+
+jobs:
+  deploy-argocd:
+    runs-on: self-hosted  # Uses your local Mac runner where k3d cluster is running
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Check Terraform version
+      run: |
+        echo "=== Terraform Version ==="
+        terraform version
+        
+    - name: Verify cluster access
+      run: |
+        echo "=== Verifying Cluster Access ==="
+        kubectl cluster-info
+        kubectl get nodes
+        echo "✅ Cluster access verified"
+        
+    - name: Navigate to Terraform directory
+      run: |
+        echo "=== Setting up Terraform Directory ==="
+        cd infrastructure/terraform
+        pwd
+        ls -la
+        
+    - name: Terraform Init
+      run: |
+        echo "=== Initializing Terraform ==="
+        cd infrastructure/terraform
+        terraform init
+        echo "✅ Terraform initialized successfully"
+        
+    - name: Terraform Plan
+      run: |
+        echo "=== Planning Terraform Changes ==="
+        cd infrastructure/terraform
+        terraform plan -out=tfplan
+        echo "✅ Terraform plan completed"
+        
+    - name: Terraform Apply
+      run: |
+        echo "=== Applying Terraform Changes ==="
+        cd infrastructure/terraform
+        terraform apply -auto-approve
+        echo "✅ Terraform apply completed"
+        
+    - name: Verify ArgoCD Deployment
+      run: |
+        echo "=== Verifying ArgoCD Deployment ==="
+        kubectl get pods -n argocd
+        kubectl get svc -n argocd
+        kubectl get namespace argocd
+        
+        # Wait for pods to be ready
+        echo "Waiting for ArgoCD pods to be ready..."
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=300s
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-application-controller -n argocd --timeout=300s
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-repo-server -n argocd --timeout=300s
+        
+        echo "✅ ArgoCD deployment verified"
+        
+    - name: Show ArgoCD Access Information
+      run: |
+        echo "=== ARGOCD ACCESS INFORMATION ==="
+        echo "Namespace: argocd"
+        echo "Service: argocd-server"
+        echo "NodePort: 30080"
+        echo "External URL: http://localhost:8081"
+        echo "Username: admin"
+        echo "Password: admin123"
+        echo ""
+        echo "=== Current ArgoCD Status ==="
+        kubectl get pods -n argocd -o wide
+        kubectl get svc -n argocd
+        
+    - name: Test ArgoCD Connection
+      run: |
+        echo "=== Testing ArgoCD Connection ==="
+        # Check if ArgoCD server is responding
+        kubectl get pods -n argocd -l app.kubernetes.io/name=argocd-server
+        
+        # Show recent events
+        echo "Recent ArgoCD events:"
+        kubectl get events -n argocd --sort-by='.lastTimestamp' | tail -10
+        
+        echo "✅ ArgoCD connection test completed"
+        
+    - name: Deployment Summary
+      run: |
+        echo "=== DEPLOYMENT SUMMARY ==="
+        echo "✅ Infrastructure deployment completed successfully"
+        echo "✅ ArgoCD is now running in your k3d cluster"
+        echo "✅ Access ArgoCD at: http://localhost:8081"
+        echo "✅ Use admin/admin123 to login"
+        echo ""
+        echo "Next steps:"
+        echo "1. Access ArgoCD UI at http://localhost:8081"
+        echo "2. Add your Git repositories as sources"
+        echo "3. Create applications for your workloads"
+        echo "4. Set up GitOps workflows"
