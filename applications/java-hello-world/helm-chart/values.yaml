@@ -12,13 +12,13 @@ fullnameOverride: ""
 autoscaling:
   enabled: false
   minReplicas: 1
-  maxReplicas: 100
+  maxReplicas: 2
   targetCPUUtilizationPercentage: 80
 
 service:
   type: NodePort
   port: 8080
-  nodePort: 30443  # This will map to port 8444 on your Mac
+  nodePort: 30444  # This will map to port 8445 on your Mac (avoiding conflict with existing 8081:30080 and 8444:30443)
 
 resources:
   limits:
