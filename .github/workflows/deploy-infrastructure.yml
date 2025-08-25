@@ -91,18 +91,17 @@ jobs:
     - name: Persist Terraform State
       run: |
         echo "=== Persisting Terraform State ==="
-        cd infrastructure/terraform
         
         # Check if state file exists
-        if [ -f "terraform.tfstate" ]; then
+        if [ -f "infrastructure/terraform/terraform.tfstate" ]; then
           echo "✅ State file found, committing to repository..."
           
           # Configure git for the runner
           git config --global user.email "github-actions@github.com"
           git config --global user.name "GitHub Actions"
           
-          # Add and commit state file
-          git add terraform.tfstate
+          # Add and commit state file from root directory
+          git add infrastructure/terraform/terraform.tfstate
           git commit -m "Update Terraform state after ArgoCD deployment [skip ci]"
           
           # Push to repository using personal access token
