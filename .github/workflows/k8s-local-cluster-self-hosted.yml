@@ -1,0 +1,93 @@
+name: Local K8s Cluster Info (Self-Hosted Runner)
+
+on:
+  workflow_dispatch:  # Manual trigger
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  cluster-info:
+    runs-on: self-hosted  # This runs on your local Mac where k3d cluster is running
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Check kubectl availability
+      run: |
+        echo "=== Checking kubectl ==="
+        kubectl version --client
+        echo ""
+        echo "=== Current Context ==="
+        kubectl config current-context
+        echo ""
+        echo "=== Available Contexts ==="
+        kubectl config get-contexts
+        
+    - name: Verify cluster connection
+      run: |
+        echo "=== Testing Cluster Connection ==="
+        kubectl cluster-info
+        echo ""
+        echo "=== Cluster Version ==="
+        kubectl version --short
+        
+    - name: List all namespaces
+      run: |
+        echo "=== All Namespaces ==="
+        kubectl get namespaces -o wide
+        
+    - name: Show pods across all namespaces
+      run: |
+        echo "=== Pods in All Namespaces ==="
+        kubectl get pods --all-namespaces -o wide
+        echo ""
+        echo "=== Pod Count by Namespace ==="
+        kubectl get pods --all-namespaces -o jsonpath='{range .items[*]}{.metadata.namespace}{"\t"}{.metadata.name}{"\t"}{.status.phase}{"\n"}{end}' | sort | uniq -c | sort -nr
+        
+    - name: Show node information
+      run: |
+        echo "=== Node Information ==="
+        kubectl get nodes -o wide
+        echo ""
+        echo "=== Node Capacity ==="
+        kubectl describe nodes | grep -A 5 "Capacity:" || echo "Unable to get node capacity"
+        
+    - name: Show cluster resources
+      run: |
+        echo "=== Deployments ==="
+        kubectl get deployments --all-namespaces -o wide
+        echo ""
+        echo "=== Services ==="
+        kubectl get services --all-namespaces -o wide
+        echo ""
+        echo "=== ConfigMaps ==="
+        kubectl get configmaps --all-namespaces -o wide
+        echo ""
+        echo "=== Secrets ==="
+        kubectl get secrets --all-namespaces -o wide
+        
+    - name: Show cluster events
+      run: |
+        echo "=== Recent Cluster Events ==="
+        kubectl get events --all-namespaces --sort-by='.lastTimestamp' | tail -20
+        
+    - name: Generate cluster summary
+      run: |
+        echo "=== CLUSTER SUMMARY ==="
+        echo "Cluster Name: $(kubectl config current-context)"
+        echo "Total Namespaces: $(kubectl get namespaces --no-headers | wc -l)"
+        echo "Total Pods: $(kubectl get pods --all-namespaces --no-headers | wc -l)"
+        echo "Total Nodes: $(kubectl get nodes --no-headers | wc -l)"
+        echo "Total Deployments: $(kubectl get deployments --all-namespaces --no-headers | wc -l)"
+        echo "Total Services: $(kubectl get services --all-namespaces --no-headers | wc -l)"
+        
+    - name: Show k3d cluster status
+      run: |
+        echo "=== k3d Cluster Status ==="
+        k3d cluster list
+        echo ""
+        echo "=== k3d Cluster Info ==="
+        k3d cluster get $(k3d cluster list --no-headers | head -1 | awk '{print $1}' || echo "k3s-default")
