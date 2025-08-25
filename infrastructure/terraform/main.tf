@@ -171,6 +171,11 @@ resource "helm_release" "argocd" {
   }
 
   set {
+    name  = "configs.cm.accounts.admin.username"
+    value = var.admin_username
+  }
+
+  set {
     name  = "configs.cm.accounts.admin.password"
     value = var.admin_password
   }

@@ -88,6 +88,31 @@ jobs:
         
         echo "✅ ArgoCD connection test completed"
         
+    - name: Persist Terraform State
+      run: |
+        echo "=== Persisting Terraform State ==="
+        cd infrastructure/terraform
+        
+        # Check if state file exists
+        if [ -f "terraform.tfstate" ]; then
+          echo "✅ State file found, committing to repository..."
+          
+          # Configure git for the runner
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "GitHub Actions"
+          
+          # Add and commit state file
+          git add terraform.tfstate
+          git commit -m "Update Terraform state after ArgoCD deployment [skip ci]"
+          
+          # Push to repository
+          git push origin develop
+          echo "✅ State file committed and pushed successfully"
+        else
+          echo "❌ No state file found - deployment may have failed"
+          exit 1
+        fi
+        
     - name: Deployment Summary
       run: |
         echo "=== DEPLOYMENT SUMMARY ==="
@@ -95,6 +120,7 @@ jobs:
         echo "✅ ArgoCD is now running in your k3d cluster"
         echo "✅ Access ArgoCD at: http://localhost:8081"
         echo "✅ Use admin/admin123 to login"
+        echo "✅ Terraform state file committed to repository"
         echo ""
         echo "Next steps:"
         echo "1. Access ArgoCD UI at http://localhost:8081"

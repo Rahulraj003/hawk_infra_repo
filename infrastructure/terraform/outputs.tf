@@ -18,6 +18,11 @@ output "argocd_external_url" {
   value       = "http://localhost:${var.external_port}"
 }
 
+output "argocd_admin_username" {
+  description = "Admin username for ArgoCD"
+  value       = var.admin_username
+}
+
 output "argocd_admin_password" {
   description = "Admin password for ArgoCD"
   value       = var.admin_password
@@ -45,7 +50,8 @@ output "kubectl_commands" {
   value = {
     check_status     = "kubectl get pods -n ${kubernetes_namespace.argocd.metadata[0].name}"
     check_services   = "kubectl get svc -n ${kubernetes_namespace.argocd.metadata[0].name}"
-    get_admin_secret = "kubectl -n ${kubernetes_namespace.argocd.metadata[0].name} get secret argocd-initial-admin-secret -o jsonpath=\"{.data.password}\" | base64 -d"
+    get_admin_username = "kubectl -n ${kubernetes_namespace.argocd.metadata[0].name} get secret argocd-secret -o jsonpath=\"{.data.admin\\.username}\" | base64 -d"
+    get_admin_secret = "kubectl -n ${kubernetes_namespace.argocd.metadata[0].name} get secret argocd-secret -o jsonpath=\"{.data.admin\\.password}\" | base64 -d"
     port_forward     = "kubectl port-forward svc/argocd-server -n ${kubernetes_namespace.argocd.metadata[0].name} 8080:443"
   }
 }
