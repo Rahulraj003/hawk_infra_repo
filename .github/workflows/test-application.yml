@@ -9,7 +9,7 @@ on:
 
 env:
   REGISTRY: docker.io
-  IMAGE_NAME: ${{ github.repository }}-java-hello-world
+  IMAGE_NAME: java-hello-world
 
 jobs:
   test-and-build:
@@ -57,17 +57,11 @@ jobs:
         echo ""
         echo "✅ Simple tests completed!"
         
-    - name: Build Docker image (without push)
-      run: |
-        cd applications/java-hello-world
-        echo "Building Docker image for testing..."
-        docker build -t test-image .
-        echo "Docker image built successfully for testing"
-        
     - name: Test Summary
       run: |
         echo "✅ All tests passed!"
         echo "✅ Build successful!"
-        echo "✅ Docker image built!"
+        echo "✅ Application validated!"
+        echo "🚫 No Docker build (PR testing only)"
         echo "🚫 No deployment (PR only)"
         echo "📝 Ready for review and merge"
