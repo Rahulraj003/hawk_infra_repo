@@ -199,7 +199,7 @@ resource "helm_release" "argocd" {
   depends_on = [kubernetes_namespace.argocd]
 }
 
-## Output ArgoCD access information
+# Output ArgoCD access information
 output "argocd_info" {
   description = "ArgoCD deployment information"
   value = {
