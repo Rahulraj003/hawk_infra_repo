@@ -131,7 +131,7 @@ jobs:
           --set image.tag="${{ env.IMAGE_TAG }}" \
           --set image.repository="${{ env.IMAGE_REPOSITORY }}" \
           --set service.type=NodePort \
-          --set service.nodePort=30443
+          --set service.nodePort=30444
         
     - name: Verify ArgoCD Application
       run: |
