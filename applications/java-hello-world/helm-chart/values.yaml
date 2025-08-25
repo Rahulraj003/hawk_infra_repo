@@ -9,6 +9,12 @@ image:
 nameOverride: ""
 fullnameOverride: ""
 
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+
 service:
   type: NodePort
   port: 8080
