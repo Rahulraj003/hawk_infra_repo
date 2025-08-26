@@ -12,10 +12,10 @@ spec:
   source:
     repoURL: https://github.com/Rahulraj003/hawk_infra_repo
     targetRevision: develop
-    path: applications/java-hello-world/helm-chart
+    path: applications/java-hello-world
     helm:
       valueFiles:
-        - values.yaml
+        - helm-chart/values.yaml
       # Override values for GitOps - always use latest image
       values: |
         image:
