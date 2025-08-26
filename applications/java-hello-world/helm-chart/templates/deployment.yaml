@@ -42,9 +42,8 @@ spec:
           livenessProbe:
             exec:
               command:
+                - pgrep
                 - java
-                - -jar
-                - app.jar
             initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
             timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
@@ -55,9 +54,8 @@ spec:
           readinessProbe:
             exec:
               command:
+                - pgrep
                 - java
-                - -jar
-                - app.jar
             initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
             timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
