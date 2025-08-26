@@ -97,15 +97,6 @@ jobs:
         echo "   image_tag: ${{ github.sha }}"
         echo "   image_repository: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}"
         
-    - name: Set Environment Variables
-      if: github.ref == 'refs/heads/develop'
-      run: |
-        echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
-        echo "IMAGE_REPOSITORY=${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}" >> $GITHUB_ENV
-        echo "✅ Environment variables set:"
-        echo "   IMAGE_TAG: ${{ github.sha }}"
-        echo "   IMAGE_REPOSITORY: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}"
-        
   deploy-to-kubernetes:
     needs: build-and-test
     runs-on: self-hosted
@@ -125,36 +116,30 @@ jobs:
       with:
         version: 'latest'
         
-    - name: Clean Up Corrupted Resources (if any)
+    - name: Smart Resource Cleanup (Only When Needed)
       run: |
-        echo "Checking for any corrupted or orphaned resources..."
+        echo "=== Smart Resource Cleanup ==="
         
         # Check if namespace exists and has resources
         if kubectl get namespace hawk-apps >/dev/null 2>&1; then
-          echo "Namespace hawk-apps exists, checking for resources..."
+          echo "Namespace hawk-apps exists, checking resource health..."
           
-          # Force delete all resources in the namespace to ensure clean state
-          echo "Cleaning up all resources in hawk-apps namespace..."
-          kubectl delete all --all -n hawk-apps --force --grace-period=0 || true
-          kubectl delete pdb --all -n hawk-apps --force --grace-period=0 || true
-          kubectl delete hpa --all -n hawk-apps --force --grace-period=0 || true
+          # Check if there are any problematic resources (ImagePullBackOff, CrashLoopBackOff, etc.)
+          PROBLEMATIC_PODS=$(kubectl get pods -n hawk-apps --no-headers 2>/dev/null | grep -E "(ImagePullBackOff|CrashLoopBackOff|Error|Pending)" | wc -l || echo "0")
           
-          echo "✅ All resources cleaned up from hawk-apps namespace"
-          
-          # Wait a moment for resources to be fully deleted
-          sleep 10
-          
-          # Verify namespace is clean
-          REMAINING_RESOURCES=$(kubectl get all -n hawk-apps --no-headers 2>/dev/null | wc -l || echo "0")
-          if [ "$REMAINING_RESOURCES" -eq "0" ]; then
-            echo "✅ Namespace hawk-apps is now clean"
+          if [ "$PROBLEMATIC_PODS" -gt "0" ]; then
+            echo "⚠️ Found $PROBLEMATIC_PODS problematic pods, cleaning up..."
+            
+            # Only clean up problematic resources
+            kubectl delete pods -n hawk-apps --field-selector=status.phase!=Running --force --grace-period=0 || true
+            kubectl delete pods -n hawk-apps --field-selector=status.phase=Failed --force --grace-period=0 || true
+            
+            echo "✅ Problematic pods cleaned up"
           else
-            echo "⚠️ Some resources still exist, forcing namespace deletion..."
-            kubectl delete namespace hawk-apps --force --grace-period=0 || true
-            sleep 10
+            echo "✅ All pods are healthy, no cleanup needed"
           fi
           
-          # Check if namespace is stuck in Terminating state and force cleanup
+          # Check if namespace is stuck in Terminating state
           NAMESPACE_STATUS=$(kubectl get namespace hawk-apps -o jsonpath='{.status.phase}' 2>/dev/null || echo "NotFound")
           if [ "$NAMESPACE_STATUS" = "Terminating" ]; then
             echo "⚠️ Namespace stuck in Terminating state, removing finalizers..."
@@ -166,18 +151,28 @@ jobs:
           echo "Namespace hawk-apps doesn't exist, will create fresh"
         fi
         
-        # Also clean up any existing ArgoCD Application to prevent conflicts
-        echo "Cleaning up existing ArgoCD Application..."
-        kubectl delete application java-hello-world -n argocd --force --grace-period=0 || true
-        sleep 5
+        # Only clean up ArgoCD Application if it's in a failed state
+        echo "Checking ArgoCD Application status..."
+        if kubectl get application java-hello-world -n argocd >/dev/null 2>&1; then
+          APP_STATUS=$(kubectl get application java-hello-world -n argocd -o jsonpath='{.status.health.status}' 2>/dev/null || echo "Unknown")
+          if [ "$APP_STATUS" = "Degraded" ] || [ "$APP_STATUS" = "Missing" ]; then
+            echo "⚠️ ArgoCD Application is in $APP_STATUS state, cleaning up..."
+            kubectl delete application java-hello-world -n argocd --force --grace-period=0 || true
+            sleep 5
+          else
+            echo "✅ ArgoCD Application is healthy ($APP_STATUS), no cleanup needed"
+          fi
+        else
+          echo "ArgoCD Application doesn't exist, will create fresh"
+        fi
         
     - name: Verify Docker Image Exists
       run: |
         echo "=== Verifying Docker Image Exists ==="
         
-        # Get image details from environment variables
-        IMAGE_TAG="${{ env.IMAGE_TAG }}"
-        IMAGE_REPOSITORY="${{ env.IMAGE_REPOSITORY }}"
+        # Get image details from job outputs
+        IMAGE_TAG="${{ needs.build-and-test.outputs.image_tag }}"
+        IMAGE_REPOSITORY="${{ needs.build-and-test.outputs.image_repository }}"
         
         echo "Checking image: $IMAGE_REPOSITORY:$IMAGE_TAG"
         
@@ -215,30 +210,39 @@ jobs:
     - name: Deploy Application with Updated Image
       run: |
         echo "Deploying application with new image..."
-        echo "Image Tag: ${{ env.IMAGE_TAG }}"
-        echo "Image Repository: ${{ env.IMAGE_REPOSITORY }}"
+        echo "Image Tag: ${{ needs.build-and-test.outputs.image_tag }}"
+        echo "Image Repository: ${{ needs.build-and-test.outputs.image_repository }}"
         
         # Verify image values are set
-        if [ -z "${{ env.IMAGE_TAG }}" ] || [ -z "${{ env.IMAGE_REPOSITORY }}" ]; then
+        if [ -z "${{ needs.build-and-test.outputs.image_tag }}" ] || [ -z "${{ needs.build-and-test.outputs.image_repository }}" ]; then
           echo "❌ Error: Image values are not set properly"
-          echo "IMAGE_TAG: ${{ env.IMAGE_TAG }}"
-          echo "IMAGE_REPOSITORY: ${{ env.IMAGE_REPOSITORY }}"
+          echo "IMAGE_TAG: ${{ needs.build-and-test.outputs.image_tag }}"
+          echo "IMAGE_REPOSITORY: ${{ needs.build-and-test.outputs.image_repository }}"
           exit 1
         fi
         
         echo "✅ Image values verified:"
-        echo "   Repository: ${{ env.IMAGE_REPOSITORY }}"
-        echo "   Tag: ${{ env.IMAGE_TAG }}"
+        echo "   Repository: ${{ needs.build-and-test.outputs.image_repository }}"
+        echo "   Tag: ${{ needs.build-and-test.outputs.image_tag }}"
         
         # Deploy using Helm with intelligent resource handling
         cd applications/java-hello-world/helm-chart
         
-        # First, try to uninstall any existing release to ensure clean state
-        echo "Checking for existing Helm release..."
+        # Check if there's an existing release and if it's healthy
+        echo "Checking existing Helm release status..."
         if helm list -n hawk-apps | grep -q "java-hello-world"; then
-          echo "Found existing release, uninstalling first..."
-          helm uninstall java-hello-world -n hawk-apps || true
-          sleep 15  # Increased wait time for complete cleanup
+          # Check if the release is in a failed state
+          RELEASE_STATUS=$(helm status java-hello-world -n hawk-apps -o json 2>/dev/null | jq -r '.info.status' || echo "unknown")
+          
+          if [ "$RELEASE_STATUS" = "failed" ] || [ "$RELEASE_STATUS" = "deployed" ]; then
+            echo "✅ Existing release is healthy ($RELEASE_STATUS), proceeding with upgrade"
+          else
+            echo "⚠️ Release is in $RELEASE_STATUS state, uninstalling first..."
+            helm uninstall java-hello-world -n hawk-apps || true
+            sleep 15  # Wait for cleanup
+          fi
+        else
+          echo "No existing release found, will install fresh"
         fi
         
         # Use upgrade --install to handle both new and existing deployments
@@ -251,8 +255,8 @@ jobs:
           --force \
           --atomic \
           --timeout 10m \
-          --set image.tag="${{ env.IMAGE_TAG }}" \
-          --set image.repository="${{ env.IMAGE_REPOSITORY }}" \
+          --set image.tag="${{ needs.build-and-test.outputs.image_tag }}" \
+          --set image.repository="${{ needs.build-and-test.outputs.image_repository }}" \
           --set service.type=NodePort \
           --set service.nodePort=30444
         
