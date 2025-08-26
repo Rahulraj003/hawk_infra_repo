@@ -15,7 +15,7 @@ autoscaling:
   maxReplicas: 2  # Increased max for better scaling
   targetCPUUtilizationPercentage: 80
 
-# Zero-downtime deployment strategy
+## Zero-downtime deployment strategy
 deploymentStrategy:
   type: RollingUpdate
   rollingUpdate:
