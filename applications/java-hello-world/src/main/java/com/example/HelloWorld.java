@@ -68,7 +68,7 @@ public class HelloWorld {
                 </head>
                 <body>
                     <div class="container">
-                        <h1>🚀 Hello Hawk World!</h1>
+                        <h1>🚀 Hello World!</h1>
                         <div class="status">✅ Your Java application is running successfully!</div>
                         <div class="status">🌐 Accessible via NodePort service</div>
                         <div class="status">🔧 Managed by Helm and Kubernetes</div>
