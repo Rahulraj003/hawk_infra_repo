@@ -87,16 +87,6 @@ jobs:
         
         echo "✅ Image values prepared for deployment job"
         
-    - name: Set Job Outputs
-      if: github.ref == 'refs/heads/develop'
-      id: image-info
-      run: |
-        echo "image_tag=${{ github.sha }}" >> $GITHUB_OUTPUT
-        echo "image_repository=${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}" >> $GITHUB_OUTPUT
-        echo "✅ Job outputs set:"
-        echo "   image_tag: ${{ github.sha }}"
-        echo "   image_repository: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}"
-        
   deploy-to-kubernetes:
     needs: build-and-test
     runs-on: self-hosted
@@ -170,9 +160,9 @@ jobs:
       run: |
         echo "=== Verifying Docker Image Exists ==="
         
-        # Get image details from job outputs
-        IMAGE_TAG="${{ needs.build-and-test.outputs.image_tag }}"
-        IMAGE_REPOSITORY="${{ needs.build-and-test.outputs.image_repository }}"
+        # Get image details directly from the build job context
+        IMAGE_TAG="${{ github.sha }}"
+        IMAGE_REPOSITORY="${{ secrets.DOCKERHUB_USERNAME }}/java-hello-world"
         
         echo "Checking image: $IMAGE_REPOSITORY:$IMAGE_TAG"
         
@@ -210,20 +200,25 @@ jobs:
     - name: Deploy Application with Updated Image
       run: |
         echo "Deploying application with new image..."
-        echo "Image Tag: ${{ needs.build-and-test.outputs.image_tag }}"
-        echo "Image Repository: ${{ needs.build-and-test.outputs.image_repository }}"
+        
+        # Get image details directly from the build job context
+        IMAGE_TAG="${{ github.sha }}"
+        IMAGE_REPOSITORY="${{ secrets.DOCKERHUB_USERNAME }}/java-hello-world"
+        
+        echo "Image Tag: $IMAGE_TAG"
+        echo "Image Repository: $IMAGE_REPOSITORY"
         
         # Verify image values are set
-        if [ -z "${{ needs.build-and-test.outputs.image_tag }}" ] || [ -z "${{ needs.build-and-test.outputs.image_repository }}" ]; then
+        if [ -z "$IMAGE_TAG" ] || [ -z "$IMAGE_REPOSITORY" ]; then
           echo "❌ Error: Image values are not set properly"
-          echo "IMAGE_TAG: ${{ needs.build-and-test.outputs.image_tag }}"
-          echo "IMAGE_REPOSITORY: ${{ needs.build-and-test.outputs.image_repository }}"
+          echo "IMAGE_TAG: $IMAGE_TAG"
+          echo "IMAGE_REPOSITORY: $IMAGE_REPOSITORY"
           exit 1
         fi
         
         echo "✅ Image values verified:"
-        echo "   Repository: ${{ needs.build-and-test.outputs.image_repository }}"
-        echo "   Tag: ${{ needs.build-and-test.outputs.image_tag }}"
+        echo "   Repository: $IMAGE_REPOSITORY"
+        echo "   Tag: $IMAGE_TAG"
         
         # Deploy using Helm with intelligent resource handling
         cd applications/java-hello-world/helm-chart
@@ -255,8 +250,8 @@ jobs:
           --force \
           --atomic \
           --timeout 10m \
-          --set image.tag="${{ needs.build-and-test.outputs.image_tag }}" \
-          --set image.repository="${{ needs.build-and-test.outputs.image_repository }}" \
+          --set image.tag="$IMAGE_TAG" \
+          --set image.repository="$IMAGE_REPOSITORY" \
           --set service.type=NodePort \
           --set service.nodePort=30444
         
