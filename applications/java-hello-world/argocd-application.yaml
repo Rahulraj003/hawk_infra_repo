@@ -16,11 +16,12 @@ spec:
     helm:
       valueFiles:
         - values.yaml
-      # Override values for GitOps
+      # Override values for GitOps - always use latest image
       values: |
         image:
           repository: rahulraj003/java-hello-world
           tag: latest
+          pullPolicy: Always
         service:
           type: NodePort
           nodePort: 30444

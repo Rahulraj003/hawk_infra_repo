@@ -221,28 +221,13 @@ jobs:
         echo "   Repository: $IMAGE_REPOSITORY"
         echo "   Tag: $IMAGE_TAG"
         
-        # Update the Helm chart values.yaml with new image for ArgoCD sync
-        echo "Updating Helm chart values for ArgoCD GitOps sync..."
-        cd applications/java-hello-world/helm-chart
+        echo "✅ Pure GitOps workflow - ArgoCD will handle deployment"
+        echo "✅ ArgoCD application configured to use latest image"
+        echo "✅ No Git modifications needed - true GitOps approach"
         
-        # Update the main values.yaml file with new image
-        sed -i "s|repository:.*|repository: $IMAGE_REPOSITORY|" values.yaml
-        sed -i "s|tag:.*|tag: $IMAGE_TAG|" values.yaml
-        
-        echo "✅ Helm chart values.yaml updated with new image"
-        echo "✅ ArgoCD will automatically sync these changes"
-        
-        # Commit and push the updated values (this will trigger ArgoCD sync)
-        cd ../..
-        git config user.email "github-actions@github.com"
-        git config user.name "GitHub Actions"
-        git add applications/java-hello-world/helm-chart/values.yaml
-        git commit -m "Update image to $IMAGE_TAG for ArgoCD GitOps sync" || echo "No changes to commit"
-        git push origin develop || echo "Push failed, but ArgoCD will sync from current state"
-        
-        echo "✅ Changes committed and pushed for ArgoCD sync"
-        echo "✅ ArgoCD will automatically deploy the new image"
-        echo "✅ No Helm deployment - pure GitOps workflow"
+        # Note: In pure GitOps, ArgoCD uses the values defined in argocd-application.yaml
+        # The pipeline builds and pushes images, but doesn't modify Git files
+        # ArgoCD automatically syncs based on its configuration
         
     - name: Create ArgoCD Project (if not exists)
       run: |
