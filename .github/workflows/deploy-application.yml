@@ -151,11 +151,23 @@ jobs:
           echo "ArgoCD Application doesn't exist, will create fresh"
         fi
         
-        # Clean up any existing ArgoCD Application to prevent duplicate resources
-        echo "Cleaning up ArgoCD Application to prevent duplicate resources..."
-        kubectl delete application java-hello-world -n argocd --force --grace-period=0 || true
-        sleep 5
-        echo "✅ ArgoCD Application cleaned up to prevent conflicts"
+        # Only clean up ArgoCD Application if there are actual conflicts or issues
+        # Don't delete healthy applications
+        echo "Checking for ArgoCD Application conflicts..."
+        if kubectl get application java-hello-world -n argocd >/dev/null 2>&1; then
+          # Check if there are sync conflicts or stuck states
+          SYNC_STATUS=$(kubectl get application java-hello-world -n argocd -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "Unknown")
+          if [ "$SYNC_STATUS" = "OutOfSync" ] || [ "$SYNC_STATUS" = "Unknown" ]; then
+            echo "⚠️ ArgoCD Application has sync issues ($SYNC_STATUS), cleaning up..."
+            kubectl delete application java-hello-world -n argocd --force --grace-period=0 || true
+            sleep 5
+            echo "✅ ArgoCD Application cleaned up due to sync issues"
+          else
+            echo "✅ ArgoCD Application is synced ($SYNC_STATUS), no cleanup needed"
+          fi
+        else
+          echo "ArgoCD Application doesn't exist, will create fresh"
+        fi
         
     - name: Verify Docker Image Exists
       run: |
