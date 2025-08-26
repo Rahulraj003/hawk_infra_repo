@@ -1,5 +1,5 @@
 # Default values for java-hello-world
-replicaCount: 2  # Increased to 2 for zero-downtime deployments
+replicaCount: 2  # Minimum 2 replicas for zero-downtime deployments
 
 image:
   repository: java-hello-world  # Will be overridden by pipeline
@@ -9,18 +9,18 @@ image:
 nameOverride: ""
 fullnameOverride: ""
 
-autoscaling:
-  enabled: false
-  minReplicas: 2  # Minimum 2 replicas for zero-downtime
-  maxReplicas: 2  # Increased max for better scaling
-  targetCPUUtilizationPercentage: 80
-
-# Zero-downtime deployment strategy
+# Zero-downtime deployment configuration
 deploymentStrategy:
   type: RollingUpdate
   rollingUpdate:
     maxUnavailable: 0        # Never have 0 pods available
     maxSurge: 1              # Allow 1 extra pod during updates
+
+autoscaling:
+  enabled: false
+  minReplicas: 2  # Minimum 2 replicas for zero-downtime
+  maxReplicas: 2  # Fixed replicas for consistent performance
+  targetCPUUtilizationPercentage: 80
 
 service:
   type: NodePort
