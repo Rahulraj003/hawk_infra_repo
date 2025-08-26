@@ -30,11 +30,16 @@ public class HelloWorld {
             // Start the server
             server.start();
             System.out.println("✅ HTTP Server started on port 8080");
+            System.out.println("✅ Application is ready and listening for requests");
             System.out.println("✅ Access your app at: http://localhost:8445");
             
-            // Keep the main thread alive
+            // Keep the main thread alive without constant output
+            System.out.println("✅ Server is running. Press Ctrl+C to stop.");
+            
+            // Simple keep-alive without spam
             while (true) {
-                Thread.sleep(1000);
+                Thread.sleep(30000); // Sleep for 30 seconds
+                System.out.println("ℹ️  Server is healthy and running...");
             }
             
         } catch (IOException | InterruptedException e) {

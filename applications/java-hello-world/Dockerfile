@@ -1,6 +1,10 @@
 # Use OpenJDK 17 slim image for smaller size
 FROM eclipse-temurin:17-jre
 
+# Set timezone to match your local time
+ENV TZ=Europe/Berlin
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 # Set working directory
 WORKDIR /app
 
