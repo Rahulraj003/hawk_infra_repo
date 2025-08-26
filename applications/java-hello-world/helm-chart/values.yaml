@@ -2,8 +2,8 @@
 replicaCount: 2  # Increased to 2 for zero-downtime deployments
 
 image:
-  repository: your-dockerhub-username/java-hello-world
-  tag: "latest"
+  repository: java-hello-world  # Will be overridden by pipeline
+  tag: "latest"                 # Will be overridden by pipeline
   pullPolicy: IfNotPresent
 
 nameOverride: ""
