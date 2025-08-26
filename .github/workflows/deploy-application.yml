@@ -156,6 +156,12 @@ jobs:
           echo "ArgoCD Application doesn't exist, will create fresh"
         fi
         
+        # Clean up any existing ArgoCD Application to prevent duplicate resources
+        echo "Cleaning up ArgoCD Application to prevent duplicate resources..."
+        kubectl delete application java-hello-world -n argocd --force --grace-period=0 || true
+        sleep 5
+        echo "✅ ArgoCD Application cleaned up to prevent conflicts"
+        
     - name: Verify Docker Image Exists
       run: |
         echo "=== Verifying Docker Image Exists ==="
@@ -259,30 +265,21 @@ jobs:
         echo "✅ Helm will handle existing resources intelligently"
         echo "✅ Future version updates will work seamlessly"
         
-    - name: Create ArgoCD Project (if not exists)
+    - name: Verify Deployment Resources
       run: |
-        echo "Creating ArgoCD project for hawk-apps..."
-        kubectl apply -f applications/java-hello-world/argocd-project.yaml || echo "Project already exists"
+        echo "=== Verifying Deployment Resources ==="
         
-    - name: Create ArgoCD Application (if not exists)
-      run: |
-        echo "Creating ArgoCD application for automatic sync..."
-        kubectl apply -f applications/java-hello-world/argocd-application.yaml || echo "Application already exists"
+        # Wait for deployment to be ready (namespace already exists)
+        kubectl wait --for=condition=available --timeout=300s deployment/java-hello-world -n hawk-apps
         
-    - name: Verify ArgoCD Application
-      run: |
-        echo "Checking ArgoCD application status..."
-        kubectl get application java-hello-world -n argocd
-        echo ""
-        echo "ArgoCD application details:"
-        kubectl describe application java-hello-world -n argocd
+        # Wait for service to be ready
+        kubectl wait --for=condition=ready --timeout=30s service/java-hello-world -n hawk-apps
+        
+        echo "✅ All resources are ready and healthy!"
         
     - name: Verify Zero-Downtime Deployment
       run: |
         echo "=== Verifying Zero-Downtime Deployment ==="
-        
-        # Wait for deployment to be ready
-        kubectl wait --for=condition=available --timeout=300s deployment/java-hello-world -n hawk-apps
         
         # Verify we have the required replicas for zero-downtime
         REPLICAS=$(kubectl get deployment java-hello-world -n hawk-apps -o jsonpath='{.spec.replicas}')
@@ -300,21 +297,6 @@ jobs:
         fi
         
         echo "✅ Zero-downtime deployment verified successfully!"
-        
-    - name: Verify Deployment Resources
-      run: |
-        echo "=== Verifying All Resources ==="
-        
-        # Wait for namespace to be ready
-        kubectl wait --for=condition=active --timeout=30s namespace/hawk-apps
-        
-        # Wait for deployment to be ready
-        kubectl wait --for=condition=available --timeout=300s deployment/java-hello-world -n hawk-apps
-        
-        # Wait for service to be ready
-        kubectl wait --for=condition=ready --timeout=30s service/java-hello-world -n hawk-apps
-        
-        echo "✅ All resources are ready and healthy!"
         
     - name: Show Deployment Status
       run: |

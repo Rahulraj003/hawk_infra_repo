@@ -40,10 +40,9 @@ spec:
           # Enhanced health checks for zero-downtime
           {{- if .Values.livenessProbe.enabled }}
           livenessProbe:
-            exec:
-              command:
-                - pgrep
-                - java
+            httpGet:
+              path: /
+              port: {{ .Values.service.port }}
             initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
             timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
@@ -52,10 +51,9 @@ spec:
           
           {{- if .Values.readinessProbe.enabled }}
           readinessProbe:
-            exec:
-              command:
-                - pgrep
-                - java
+            httpGet:
+              path: /
+              port: {{ .Values.service.port }}
             initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
             timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
