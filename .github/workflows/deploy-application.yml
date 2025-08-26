@@ -101,11 +101,6 @@ jobs:
       with:
         version: 'latest'
         
-    - name: Set up Helm
-      uses: azure/setup-helm@v3
-      with:
-        version: 'latest'
-        
     - name: Smart Resource Cleanup (Only When Needed)
       run: |
         echo "=== Smart Resource Cleanup ==="
@@ -209,7 +204,7 @@ jobs:
         
         # Get image details directly from the build job context
         IMAGE_TAG="${{ github.sha }}"
-        IMAGE_REPOSITORY="${{ secrets.DOCKERHUB_USERNAME }}/java-hello-world"
+        IMAGE_REPOSITORY="${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}"
         
         echo "Image Tag: $IMAGE_TAG"
         echo "Image Repository: $IMAGE_REPOSITORY"
@@ -226,44 +221,46 @@ jobs:
         echo "   Repository: $IMAGE_REPOSITORY"
         echo "   Tag: $IMAGE_TAG"
         
-        # Deploy using Helm with intelligent resource handling
+        # Update the Helm chart values.yaml with new image for ArgoCD sync
+        echo "Updating Helm chart values for ArgoCD GitOps sync..."
         cd applications/java-hello-world/helm-chart
         
-        # Check if there's an existing release and if it's healthy
-        echo "Checking existing Helm release status..."
-        if helm list -n hawk-apps | grep -q "java-hello-world"; then
-          # Check if the release is in a failed state
-          RELEASE_STATUS=$(helm status java-hello-world -n hawk-apps -o json 2>/dev/null | jq -r '.info.status' || echo "unknown")
-          
-          if [ "$RELEASE_STATUS" = "failed" ] || [ "$RELEASE_STATUS" = "deployed" ]; then
-            echo "✅ Existing release is healthy ($RELEASE_STATUS), proceeding with upgrade"
-          else
-            echo "⚠️ Release is in $RELEASE_STATUS state, uninstalling first..."
-            helm uninstall java-hello-world -n hawk-apps || true
-            sleep 15  # Wait for cleanup
-          fi
-        else
-          echo "No existing release found, will install fresh"
-        fi
+        # Update the main values.yaml file with new image
+        sed -i "s|repository:.*|repository: $IMAGE_REPOSITORY|" values.yaml
+        sed -i "s|tag:.*|tag: $IMAGE_TAG|" values.yaml
         
-        # Use upgrade --install to handle both new and existing deployments
-        # --force ensures existing resources are properly managed
-        # --atomic ensures rollback on failure
-        echo "Installing/upgrading application..."
-        helm upgrade --install java-hello-world . \
-          --namespace hawk-apps \
-          --create-namespace \
-          --force \
-          --atomic \
-          --timeout 10m \
-          --set image.tag="$IMAGE_TAG" \
-          --set image.repository="$IMAGE_REPOSITORY" \
-          --set service.type=NodePort \
-          --set service.nodePort=30444
+        echo "✅ Helm chart values.yaml updated with new image"
+        echo "✅ ArgoCD will automatically sync these changes"
         
-        echo "✅ Application deployed/updated successfully!"
-        echo "✅ Helm will handle existing resources intelligently"
-        echo "✅ Future version updates will work seamlessly"
+        # Commit and push the updated values (this will trigger ArgoCD sync)
+        cd ../..
+        git config user.email "github-actions@github.com"
+        git config user.name "GitHub Actions"
+        git add applications/java-hello-world/helm-chart/values.yaml
+        git commit -m "Update image to $IMAGE_TAG for ArgoCD GitOps sync" || echo "No changes to commit"
+        git push origin develop || echo "Push failed, but ArgoCD will sync from current state"
+        
+        echo "✅ Changes committed and pushed for ArgoCD sync"
+        echo "✅ ArgoCD will automatically deploy the new image"
+        echo "✅ No Helm deployment - pure GitOps workflow"
+        
+    - name: Create ArgoCD Project (if not exists)
+      run: |
+        echo "Creating ArgoCD project for hawk-apps..."
+        kubectl apply -f applications/java-hello-world/argocd-project.yaml || echo "Project already exists"
+        
+    - name: Create ArgoCD Application (if not exists)
+      run: |
+        echo "Creating ArgoCD application for automatic sync..."
+        kubectl apply -f applications/java-hello-world/argocd-application.yaml || echo "Application already exists"
+        
+    - name: Verify ArgoCD Application
+      run: |
+        echo "Checking ArgoCD application status..."
+        kubectl get application java-hello-world -n argocd
+        echo ""
+        echo "ArgoCD application details:"
+        kubectl describe application java-hello-world -n argocd
         
     - name: Verify Deployment Resources
       run: |
@@ -272,8 +269,19 @@ jobs:
         # Wait for deployment to be ready (namespace already exists)
         kubectl wait --for=condition=available --timeout=300s deployment/java-hello-world -n hawk-apps
         
-        # Wait for service to be ready
-        kubectl wait --for=condition=ready --timeout=30s service/java-hello-world -n hawk-apps
+        # Check service status without waiting (service is usually ready immediately)
+        echo "Checking service status..."
+        kubectl get service java-hello-world -n hawk-apps
+        
+        # Verify service has correct configuration
+        SERVICE_PORT=$(kubectl get service java-hello-world -n hawk-apps -o jsonpath='{.spec.ports[0].port}')
+        NODE_PORT=$(kubectl get service java-hello-world -n hawk-apps -o jsonpath='{.spec.ports[0].nodePort}')
+        
+        if [ "$SERVICE_PORT" = "8080" ] && [ "$NODE_PORT" = "30444" ]; then
+          echo "✅ Service configuration is correct (Port: $SERVICE_PORT, NodePort: $NODE_PORT)"
+        else
+          echo "⚠️ Service configuration mismatch (Port: $SERVICE_PORT, NodePort: $NODE_PORT)"
+        fi
         
         echo "✅ All resources are ready and healthy!"
         

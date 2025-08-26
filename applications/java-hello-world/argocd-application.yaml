@@ -3,36 +3,42 @@ kind: Application
 metadata:
   name: java-hello-world
   namespace: argocd
-  labels:
-    app.kubernetes.io/name: java-hello-world
-    app.kubernetes.io/part-of: hawk-apps
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: hawk-apps
+  
+  # Source: Git repository with Helm chart
   source:
-    repoURL: https://github.com/Rahulraj003/hawk_infra_repo.git
+    repoURL: https://github.com/Rahulraj003/hawk_infra_repo
     targetRevision: develop
     path: applications/java-hello-world/helm-chart
     helm:
       valueFiles:
         - values.yaml
+      # Override values for GitOps
+      values: |
+        image:
+          repository: rahulraj003/java-hello-world
+          tag: latest
+        service:
+          type: NodePort
+          nodePort: 30444
+  
+  # Destination: hawk-apps namespace
   destination:
     server: https://kubernetes.default.svc
     namespace: hawk-apps
-  ## Professional sync policy with proper automation
+  
+  # Sync policy
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
-      # Allow out-of-sync applications to be synced automatically
-      allowEmpty: false
-    # Sync options for production-grade deployments
     syncOptions:
       - CreateNamespace=true
       - PrunePropagationPolicy=foreground
       - PruneLast=true
-      - RespectIgnoreDifferences=true
-      - ServerSideApply=true
-  # Revision history for rollback capability
-  revisionHistoryLimit: 10
+  
+  # Revision history
+  revisionHistoryLimit: 5
