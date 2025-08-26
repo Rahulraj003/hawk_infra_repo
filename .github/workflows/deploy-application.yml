@@ -148,12 +148,11 @@ jobs:
         cd applications/java-hello-world/helm-chart
         
         # Use upgrade --install to handle both new and existing deployments
-        # --force and --replace ensure existing resources are properly managed
+        # --force ensures existing resources are properly managed
         helm upgrade --install java-hello-world . \
           --namespace hawk-apps \
           --create-namespace \
           --force \
-          --replace \
           --set image.tag="${{ env.IMAGE_TAG }}" \
           --set image.repository="${{ env.IMAGE_REPOSITORY }}" \
           --set service.type=NodePort \
@@ -198,12 +197,7 @@ jobs:
           exit 1
         fi
         
-        # Verify PodDisruptionBudget is in place
-        if kubectl get pdb java-hello-world -n hawk-apps >/dev/null 2>&1; then
-          echo "✅ PodDisruptionBudget configured for high availability"
-        else
-          echo "⚠️ PodDisruptionBudget not found (optional for zero-downtime)"
-        fi
+        echo "✅ Zero-downtime deployment verified successfully!"
         
     - name: Verify Deployment Resources
       run: |

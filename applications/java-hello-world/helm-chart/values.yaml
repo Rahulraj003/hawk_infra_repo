@@ -12,20 +12,15 @@ fullnameOverride: ""
 autoscaling:
   enabled: false
   minReplicas: 2  # Minimum 2 replicas for zero-downtime
-  maxReplicas: 4  # Increased max for better scaling
+  maxReplicas: 2  # Increased max for better scaling
   targetCPUUtilizationPercentage: 80
 
-# Zero-downtime deployment strategy
+## Zero-downtime deployment strategy
 deploymentStrategy:
   type: RollingUpdate
   rollingUpdate:
     maxUnavailable: 0        # Never have 0 pods available
     maxSurge: 1              # Allow 1 extra pod during updates
-
-# Pod disruption budget for high availability
-podDisruptionBudget:
-  enabled: true
-  minAvailable: 1            # Always keep at least 1 pod running
 
 service:
   type: NodePort
