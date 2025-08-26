@@ -106,16 +106,6 @@ jobs:
       with:
         version: 'latest'
         
-    - name: Create ArgoCD Project (if not exists)
-      run: |
-        echo "Creating ArgoCD project for hawk-apps..."
-        kubectl apply -f applications/java-hello-world/argocd-project.yaml || echo "Project already exists"
-        
-    - name: Create ArgoCD Application (if not exists)
-      run: |
-        echo "Creating ArgoCD application for automatic sync..."
-        kubectl apply -f applications/java-hello-world/argocd-application.yaml || echo "Application already exists"
-        
     - name: Clean Up Corrupted Resources (if any)
       run: |
         echo "Checking for any corrupted or orphaned resources..."
@@ -124,15 +114,25 @@ jobs:
         if kubectl get namespace hawk-apps >/dev/null 2>&1; then
           echo "Namespace hawk-apps exists, checking for resources..."
           
-          # Check for orphaned resources without proper Helm ownership
-          ORPHANED_RESOURCES=$(kubectl get all -n hawk-apps --no-headers 2>/dev/null | grep -v "helm.sh/release" || true)
+          # Force delete all resources in the namespace to ensure clean state
+          echo "Cleaning up all resources in hawk-apps namespace..."
+          kubectl delete all --all -n hawk-apps --force --grace-period=0 || true
+          kubectl delete pdb --all -n hawk-apps --force --grace-period=0 || true
+          kubectl delete hpa --all -n hawk-apps --force --grace-period=0 || true
           
-          if [ -n "$ORPHANED_RESOURCES" ]; then
-            echo "Found orphaned resources, cleaning them up..."
-            kubectl delete all --all -n hawk-apps --force --grace-period=0 || true
-            echo "✅ Orphaned resources cleaned up"
+          echo "✅ All resources cleaned up from hawk-apps namespace"
+          
+          # Wait a moment for resources to be fully deleted
+          sleep 10
+          
+          # Verify namespace is clean
+          REMAINING_RESOURCES=$(kubectl get all -n hawk-apps --no-headers 2>/dev/null | wc -l || echo "0")
+          if [ "$REMAINING_RESOURCES" -eq "0" ]; then
+            echo "✅ Namespace hawk-apps is now clean"
           else
-            echo "✅ No orphaned resources found"
+            echo "⚠️ Some resources still exist, forcing namespace deletion..."
+            kubectl delete namespace hawk-apps --force --grace-period=0 || true
+            sleep 10
           fi
         else
           echo "Namespace hawk-apps doesn't exist, will create fresh"
@@ -147,8 +147,17 @@ jobs:
         # Deploy using Helm with intelligent resource handling
         cd applications/java-hello-world/helm-chart
         
+        # First, try to uninstall any existing release to ensure clean state
+        echo "Checking for existing Helm release..."
+        if helm list -n hawk-apps | grep -q "java-hello-world"; then
+          echo "Found existing release, uninstalling first..."
+          helm uninstall java-hello-world -n hawk-apps || true
+          sleep 10
+        fi
+        
         # Use upgrade --install to handle both new and existing deployments
         # --force ensures existing resources are properly managed
+        echo "Installing/upgrading application..."
         helm upgrade --install java-hello-world . \
           --namespace hawk-apps \
           --create-namespace \
@@ -161,6 +170,16 @@ jobs:
         echo "✅ Application deployed/updated successfully!"
         echo "✅ Helm will handle existing resources intelligently"
         echo "✅ Future version updates will work seamlessly"
+        
+    - name: Create ArgoCD Project (if not exists)
+      run: |
+        echo "Creating ArgoCD project for hawk-apps..."
+        kubectl apply -f applications/java-hello-world/argocd-project.yaml || echo "Project already exists"
+        
+    - name: Create ArgoCD Application (if not exists)
+      run: |
+        echo "Creating ArgoCD application for automatic sync..."
+        kubectl apply -f applications/java-hello-world/argocd-application.yaml || echo "Application already exists"
         
     - name: Verify ArgoCD Application
       run: |
