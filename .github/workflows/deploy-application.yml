@@ -251,10 +251,15 @@ jobs:
       run: |
         echo "=== Verifying Deployment Resources ==="
         
-        # Wait for deployment to be ready (namespace already exists)
+        # Wait for namespace to be created by ArgoCD
+        echo "Waiting for hawk-apps namespace to be created by ArgoCD..."
+        kubectl wait --for=condition=active --timeout=60s namespace/hawk-apps || echo "Namespace creation in progress"
+        
+        # Wait for deployment to be ready
+        echo "Waiting for deployment to be ready..."
         kubectl wait --for=condition=available --timeout=300s deployment/java-hello-world -n hawk-apps
         
-        # Check service status without waiting (service is usually ready immediately)
+        # Check service status
         echo "Checking service status..."
         kubectl get service java-hello-world -n hawk-apps
         
